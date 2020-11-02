@@ -2,13 +2,16 @@
 This is an unofficial implementation of CS-KD [(Regularizing Class-wise Predictions via Self-knowledge Distillation)](https://arxiv.org/abs/2003.13964).
 
 ## Requirements
-(TODO : requirements.txt or Dockerfile for the image of fixed environment.)
 - python >= 3.6
 - tensorflow >= 2.2
 
 ## Training
+```
+```
 
 ## Evaluation
+```
+```
 
 ## Results
 Our model achieves the following performance on :

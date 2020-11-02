@@ -13,21 +13,31 @@ from tensorflow.keras.layers import Add
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import DepthwiseConv2D
+from tensorflow.keras.regularizers import l2
 from tensorflow.keras.models import Model
 
 
+# def regularizer(flag, decay=1e-4):
+#     if flag:
+#         return l2(decay)
+#     return None
+
 def block0(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None):
     if conv_shortcut is True:
-        shortcut = Conv2D(filters, 1, strides=stride, name=name+'_0_conv')(x)
+        shortcut = Conv2D(filters, 1, strides=stride, 
+                          kernel_regularizer=l2(1e-4), 
+                          name=name+'_0_conv')(x)
         shortcut = BatchNormalization(name=name+'_0_norm')(shortcut)
     else:
         shortcut = x
 
-    x = Conv2D(filters, kernel_size, strides=stride, padding='same', name=name+'_1_conv')(x)
+    x = Conv2D(filters, kernel_size, strides=stride, padding='same', 
+               kernel_regularizer=l2(1e-4), name=name+'_1_conv')(x)
     x = BatchNormalization(name=name+'_1_norm')(x)
     x = Activation('relu', name=name+'_1_acti')(x)
     
-    x = Conv2D(filters, kernel_size, padding='same', name=name+'_2_conv')(x)
+    x = Conv2D(filters, kernel_size, padding='same', 
+               kernel_regularizer=l2(1e-4), name=name+'_2_conv')(x)
     x = BatchNormalization(name=name+'_2_norm')(x)
 
     x = Add(name=name+'_add')([shortcut, x])
@@ -47,16 +57,19 @@ def block0_1(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None)
     preact = Activation('relu', name=name+'_pre_acti')(preact)
 
     if conv_shortcut is True:
-        shortcut = Conv2D(filters, 1, strides=stride, name=name+'_0_conv')(x)
+        shortcut = Conv2D(filters, 1, strides=stride, 
+                          kernel_regularizer=l2(1e-4), name=name+'_0_conv')(x)
         shortcut = BatchNormalization(name=name+'_0_norm')(shortcut)
     else:
         shortcut = x
 
-    x = Conv2D(filters, kernel_size, strides=stride, padding='same', name=name+'_1_conv')(x)
+    x = Conv2D(filters, kernel_size, strides=stride, padding='same', 
+               kernel_regularizer=l2(1e-4), name=name+'_1_conv')(x)
     x = BatchNormalization(name=name+'_1_norm')(x)
     x = Activation('relu', name=name+'_1_acti')(x)
     
-    x = Conv2D(filters, kernel_size, padding='same', name=name+'_2_conv')(x)
+    x = Conv2D(filters, kernel_size, padding='same', 
+               kernel_regularizer=l2(1e-4), name=name+'_2_conv')(x)
     x = Add(name=name+'_add')([shortcut, x])
     return x
 
@@ -80,7 +93,8 @@ def ResNet(
     img_input = x = Input(shape=input_shape, name='main_input')
     
     x = ZeroPadding2D(padding=((1, 1), (1, 1)), name='conv1_pad')(x)
-    x = Conv2D(64, 3, strides=1, use_bias=use_bias, name='conv1_conv')(x)
+    x = Conv2D(64, 3, strides=1, use_bias=use_bias, 
+               kernel_regularizer=l2(1e-4), name='conv1_conv')(x)
     if preact is False:
         x = BatchNormalization(name='conv1_norm')(x)
         x = Activation('relu', name='conv1_acti')(x)
@@ -92,7 +106,6 @@ def ResNet(
 
     x = GlobalAveragePooling2D(name='avg_pool')(x)
     x = Dense(classes, name='main_output')(x)
-
     model = Model(img_input, x, name=backbone)
     return model
 

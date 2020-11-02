@@ -1,4 +1,5 @@
 import os
+import cv2
 import tqdm
 import random
 import numpy as np
@@ -8,52 +9,11 @@ import tensorflow as tf
 AUTO = tf.data.experimental.AUTOTUNE
 
 
-def set_dataset(dataset, data_path):
-    if 'cifar' in  dataset:
-        def unpickle(file):
-            import pickle
-            with open(file, 'rb') as fo:
-                dict = pickle.load(fo, encoding='bytes')
-            return dict
-
-        b_trainset = unpickle(os.path.join(data_path, 'train'))
-        b_valset = unpickle(os.path.join(data_path, 'test'))
-        
-        trainset_temp = {}
-        valset_temp = {}
-        for i, l in enumerate(b_trainset[b'fine_labels']):
-            if not l in trainset_temp.keys():
-                temp = np.dstack((b_trainset[b'data'][i][:1024].reshape((32,32)),
-                                b_trainset[b'data'][i][1024:2048].reshape((32,32)),
-                                b_trainset[b'data'][i][2048:].reshape((32,32))))
-                trainset_temp[l] = temp[np.newaxis,...]
-            else:
-                temp = np.dstack((b_trainset[b'data'][i][:1024].reshape((32,32)),
-                                b_trainset[b'data'][i][1024:2048].reshape((32,32)),
-                                b_trainset[b'data'][i][2048:].reshape((32,32))))
-                trainset_temp[l] = np.append(trainset_temp[l], temp[np.newaxis,...], axis=0)
-                
-        for i, l in enumerate(b_valset[b'fine_labels']):
-            if not l in valset_temp.keys():
-                temp = np.dstack((b_valset[b'data'][i][:1024].reshape((32,32)),
-                                b_valset[b'data'][i][1024:2048].reshape((32,32)),
-                                b_valset[b'data'][i][2048:].reshape((32,32))))
-                valset_temp[l] = temp[np.newaxis,...]
-            else:
-                temp = np.dstack((b_valset[b'data'][i][:1024].reshape((32,32)),
-                                b_valset[b'data'][i][1024:2048].reshape((32,32)),
-                                b_valset[b'data'][i][2048:].reshape((32,32))))
-                valset_temp[l] = np.append(valset_temp[l], temp[np.newaxis,...], axis=0)
-                
-        trainset = []
-        valset = []
-        for k, v in trainset_temp.items():
-            for vv in v:
-                trainset.append([vv, k])
-                
-        for k, v in valset_temp.items():
-            for vv in v:
-                valset.append([vv, k])
+def set_dataset(dataset, classes=None, data_path=None):
+    if dataset == 'cifar100':
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
+        trainset = [[i, l] for i, l in zip(x_train, y_train)]
+        valset = [[i, l] for i, l in zip(x_test, y_test)]
     else:
         trainset = pd.read_csv(
             os.path.join(
@@ -90,6 +50,7 @@ class DataLoader:
             if self.mode == 'train':
                 img = self.augment._crop(img, shape)
                 img = self.augment._random_hflip(img)
+
             img = self.augment._resize(img, (32, 32, 3))
 
         elif self.dataset.startswith('cifar'):
@@ -104,6 +65,7 @@ class DataLoader:
                 img = self.augment._crop(img, shape)
                 img = self.augment._resize(img, (224, 224, 3))
                 img = self.augment._random_hflip(img)
+
             else:
                 img = self.augment._resize(img, (256, 256, 3))
                 img = self.augment._center_crop(img, 224/256)
@@ -111,19 +73,18 @@ class DataLoader:
         img = self.augment._standardize(img)
 
         # one-hot encoding
-        label = tf.one_hot(label, self.classes)
+        label = tf.squeeze(tf.one_hot(label, self.classes))
         return (img, label)
 
-    def preprocess_image(self, img, label):
-        if self.dataset in ['cifar100', 'tinyimagenet']:
-            shape = (32, 32, 3)
-        else:
-            shape = tf.image.extract_jpeg_shape(img)
-            img = tf.io.decode_jpeg(img, channels=3)
-        img, label = self.augmentation(img, label, shape)
-        return ({'main_input': img}, {'main_output': label})
-
     def xe_dataloader(self):
+        def _preprocess_image(img, label):
+            if self.dataset in ['cifar100', 'tinyimagenet']:
+                shape = (32, 32, 3)
+            else:
+                shape = tf.image.extract_jpeg_shape(img)
+                img = tf.io.decode_jpeg(img, channels=3)
+            return self.augmentation(img, label, shape)
+
         imglist, labellist = self.datalist[:,0].tolist(), self.datalist[:,1].tolist()
         dataset = tf.data.Dataset.from_tensor_slices((imglist, labellist))
         dataset = dataset.repeat()
@@ -132,16 +93,54 @@ class DataLoader:
 
         if 'cifar' not in self.dataset:
             dataset = dataset.interleave(self.fetch_dataset, num_parallel_calls=AUTO)
-        dataset = dataset.map(self.preprocess_image, num_parallel_calls=AUTO)
+
+        dataset = dataset.map(_preprocess_image, num_parallel_calls=AUTO)
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.prefetch(AUTO)
         return dataset
 
     def cskd_dataloader(self):
         # set numpy generator -> tf.data.Dataset.from_generator
-        pass
-        
+        def _imgload(img):
+            if self.dataset in ['cifar100', 'tinyimagenet']:
+                return img
+            return cv2.cvtColor(cv2.imread(img))
+            
+        def _loader():
+            imglist, labellist = self.datalist[:,0], self.datalist[:,1].astype(np.int)
+            indices = np.arange(len(self.datalist))
+            while True:
+                if self.shuffle:
+                    indices = np.random.permutation(len(self.datalist))
+                for idx in indices:
+                    img, label = _imgload(imglist[idx]), labellist[idx]
+                    idx_cls = np.random.choice(np.where(labellist == label)[0])
+                    img2, label2 = _imgload(imglist[idx_cls]), labellist[idx_cls]
+                    assert label == label2, 'label and label2 must be equal!'
+                    yield (img, label, img2, label2)
 
+        def _preprocess_image(img, label, img2, label2):
+            if self.dataset in ['cifar100', 'tinyimagenet']:
+                shape = shape2 = (32, 32, 3)
+            else:
+                shape = img.shape
+                shape2 = img2.shape
+
+            img, label = self.augmentation(img, label, shape)
+            img2, label2 = self.augmentation(img2, label2, shape2)
+            return (tf.stack((img, img2), axis=0), tf.stack((label, label2), axis=0))
+
+        dataset = tf.data.Dataset.from_generator(
+            _loader,
+            output_types=(tf.int32, tf.int32, tf.int32, tf.int32),
+            output_shapes=(
+                tf.TensorShape([None, None, None,]), tf.TensorShape([]),
+                tf.TensorShape([None, None, None,]), tf.TensorShape([])))
+        dataset = dataset.map(_preprocess_image, num_parallel_calls=AUTO)
+        dataset = dataset.batch(self.batch_size)
+        dataset = dataset.prefetch(AUTO)
+        return dataset
+        
 
 class Augment:
     def __init__(self, dataset):

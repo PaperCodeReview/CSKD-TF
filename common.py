@@ -10,13 +10,6 @@ from datetime import datetime
 import tensorflow as tf
 
 
-def check_arguments(args):
-    assert args.src_path is not None, 'src_path must be entered.'
-    assert args.data_path is not None, 'data_path must be entered.'
-    assert args.result_path is not None, 'result_path must be entered.'
-    return args
-
-
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--backbone",       type=str,       default='resnet50')
@@ -50,7 +43,7 @@ def get_arguments():
     parser.add_argument("--summary",        action='store_true')
     parser.add_argument("--ignore-search",  type=str,       default='')
 
-    return check_arguments(parser.parse_args())
+    return parser.parse_args()
 
 
 def set_seed(SEED=42):
