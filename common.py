@@ -31,14 +31,15 @@ def get_arguments():
     parser.add_argument("--checkpoint",     action='store_true')
     parser.add_argument("--history",        action='store_true')
     parser.add_argument("--tensorboard",    action='store_true')
+    parser.add_argument("--lr_scheduler",   action='store_true')
     parser.add_argument("--tb_interval",    type=int,       default=0)
-    parser.add_argument("--lr_value",       type=float,     default=.1)
-    parser.add_argument("--lr_interval",    type=str,       default='100,150')
+    parser.add_argument("--tb_histogram",   type=int,       default=0)
 
     parser.add_argument('--src_path',       type=str,       default='.')
     parser.add_argument('--data_path',      type=str,       default=None)
     parser.add_argument('--result_path',    type=str,       default='./result')
     parser.add_argument('--snapshot',       type=str,       default=None)
+    parser.add_argument('--seed',           type=int,       default=1)
     parser.add_argument("--gpus",           type=str,       default='-1')
     parser.add_argument("--summary",        action='store_true')
     parser.add_argument("--ignore-search",  type=str,       default='')
@@ -102,23 +103,22 @@ def search_same(args):
         search_ignore += args.ignore_search.split(',')
 
     initial_epoch = 0
-    stamps = os.listdir(args.result_path)
+    stamps = os.listdir(f'{args.result_path}/{args.dataset}')
     for stamp in stamps:
         try:
             desc = yaml.full_load(
-                open(os.path.join(
-                    args.result_path, f'{args.dataset}/{stamp}/model_desc.yml')))
+                open(f'{args.result_path}/{args.dataset}/{stamp}/model_desc.yml', 'r'))
         except:
             continue
-
+        
         flag = True
         for k, v in vars(args).items():
             if k in search_ignore:
                 continue
                 
             if v != desc[k]:
-                # if stamp == '200903_Thu_05_38_31':
-                #     print(stamp, k, desc[k], v)
+                # if stamp == '201104_Wed_08_53_35':
+                print(stamp, k, desc[k], v)
                 flag = False
                 break
         
@@ -126,12 +126,10 @@ def search_same(args):
             args.stamp = stamp
             try:
                 df = pd.read_csv(
-                    os.path.join(
-                        args.result_path, 
-                        f'{args.dataset}/{args.stamp}/history/epoch.csv'))
+                    f'{args.result_path}/{args.dataset}/{args.stamp}/history/epoch.csv')
             except:
-                continue
-
+                raise ValueError('history loading error!')
+            
             if len(df) > 0:
                 if int(df['epoch'].values[-1]+1) == args.epochs:
                     print(f'{stamp} Training already finished!!!')
@@ -144,19 +142,17 @@ def search_same(args):
                 else:
                     ckpt_list = sorted(
                         [d for d in os.listdir(
-                            os.path.join(
-                                args.result_path, 
-                                f'{args.dataset}/{args.stamp}/checkpoint/query')) if 'h5' in d],
+                            f'{args.result_path}/{args.dataset}/{args.stamp}/checkpoint') if 'h5' in d],
                         key=lambda x: int(x.split('_')[0]))
                     
                     if len(ckpt_list) > 0:
-                        args.snapshot = os.path.join(
-                            args.result_path, 
-                            f'{args.dataset}/{args.stamp}/checkpoint/query/{ckpt_list[-1]}')
+                        args.snapshot = f'{args.result_path}/{args.dataset}/{args.stamp}/checkpoint/{ckpt_list[-1]}'
                         initial_epoch = int(ckpt_list[-1].split('_')[0])
                     else:
                         print('{} Training already finished!!!'.format(stamp))
                         return args, -1
+            else:
+                continue
 
             break
     

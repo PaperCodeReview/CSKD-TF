@@ -15,21 +15,18 @@ def set_dataset(dataset, classes=None, data_path=None):
         trainset = [[i, l] for i, l in zip(x_train, y_train)]
         valset = [[i, l] for i, l in zip(x_test, y_test)]
     else:
-        trainset = pd.read_csv(
-            os.path.join(
-                data_path, '{}_trainset.csv'.format(dataset)
-            )).values.tolist()
-        valset = pd.read_csv(
-            os.path.join(
-                data_path, '{}_valset.csv'.format(dataset)
-            )).values.tolist()
-
+        trainset = pd.read_csv(f'{data_path}/{dataset}_trainset.csv').values.tolist()
+        trainset = [[f'{data_path}/{t[0]}', t[1]] for t in trainset]
+        valset = pd.read_csv(f'{data_path}/{dataset}_valset.csv').values.tolist()
+        valset = [[f'{data_path}/{v[0]}', v[1]] for v in valset]
+    
     return np.array(trainset, dtype='object'), np.array(valset, dtype='object')
 
 
 class DataLoader:
-    def __init__(self, mode, datalist, dataset, classes, batch_size=128, shuffle=True):
-        self.mode = mode,
+    def __init__(self, loss, mode, datalist, dataset, classes, batch_size=128, shuffle=True):
+        self.loss = loss
+        self.mode = mode
         self.datalist = datalist
         self.dataset = dataset
         self.classes = classes
@@ -51,23 +48,23 @@ class DataLoader:
                 img = self.augment._crop(img, shape)
                 img = self.augment._random_hflip(img)
 
-            img = self.augment._resize(img, (32, 32, 3))
+            img = self.augment._resize(img, 32)
 
         elif self.dataset.startswith('cifar'):
             if self.mode == 'train':
-                img = self.augment._pad(img, [[4, 4], [4, 4]])
+                img = self.augment._pad(img, [[4, 4], [4, 4], [0, 0]])
                 img = self.augment._crop(img, (40, 40, 3))
-                img = self.augment._resize(img, (32, 32, 3))
+                img = self.augment._resize(img, 32)
                 img = self.augment._random_hflip(img)
 
         else:
             if self.mode == 'train':
                 img = self.augment._crop(img, shape)
-                img = self.augment._resize(img, (224, 224, 3))
+                img = self.augment._resize(img, 224)
                 img = self.augment._random_hflip(img)
 
             else:
-                img = self.augment._resize(img, (256, 256, 3))
+                img = self.augment._resize(img, 256)
                 img = self.augment._center_crop(img, 224/256)
             
         img = self.augment._standardize(img)
@@ -78,7 +75,7 @@ class DataLoader:
 
     def xe_dataloader(self):
         def _preprocess_image(img, label):
-            if self.dataset in ['cifar100', 'tinyimagenet']:
+            if self.dataset in ['cifar100']:
                 shape = (32, 32, 3)
             else:
                 shape = tf.image.extract_jpeg_shape(img)
@@ -102,9 +99,9 @@ class DataLoader:
     def cskd_dataloader(self):
         # set numpy generator -> tf.data.Dataset.from_generator
         def _imgload(img):
-            if self.dataset in ['cifar100', 'tinyimagenet']:
+            if self.dataset in ['cifar100']:
                 return img
-            return cv2.cvtColor(cv2.imread(img))
+            return cv2.imread(img)[...,::-1]
             
         def _loader():
             imglist, labellist = self.datalist[:,0], self.datalist[:,1].astype(np.int)
@@ -117,29 +114,29 @@ class DataLoader:
                     idx_cls = np.random.choice(np.where(labellist == label)[0])
                     img2, label2 = _imgload(imglist[idx_cls]), labellist[idx_cls]
                     assert label == label2, 'label and label2 must be equal!'
-                    yield (img, label, img2, label2)
+                    yield (img, label, img.shape, img2, label2, img2.shape)
 
-        def _preprocess_image(img, label, img2, label2):
-            if self.dataset in ['cifar100', 'tinyimagenet']:
-                shape = shape2 = (32, 32, 3)
-            else:
-                shape = img.shape
-                shape2 = img2.shape
-
+        def _preprocess_image(img, label, shape, img2, label2, shape2):
             img, label = self.augmentation(img, label, shape)
             img2, label2 = self.augmentation(img2, label2, shape2)
             return (tf.stack((img, img2), axis=0), tf.stack((label, label2), axis=0))
 
         dataset = tf.data.Dataset.from_generator(
             _loader,
-            output_types=(tf.int32, tf.int32, tf.int32, tf.int32),
+            output_types=(tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32),
             output_shapes=(
-                tf.TensorShape([None, None, None,]), tf.TensorShape([]),
-                tf.TensorShape([None, None, None,]), tf.TensorShape([])))
+                tf.TensorShape([None, None, None,]), tf.TensorShape([]), tf.TensorShape([None,]),
+                tf.TensorShape([None, None, None,]), tf.TensorShape([]), tf.TensorShape([None,])))
         dataset = dataset.map(_preprocess_image, num_parallel_calls=AUTO)
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.prefetch(AUTO)
         return dataset
+
+    def dataloader(self):
+        if self.loss == 'crossentropy':
+            return self.xe_dataloader()
+        else:
+            return self.cskd_dataloader()
         
 
 class Augment:
@@ -170,7 +167,7 @@ class Augment:
             area_range=(.08, 1.),
             max_attempts=100,
             use_image_if_no_bounding_boxes=True)
-
+        
         offset_height, offset_width, _ = tf.unstack(bbox_begin)
         target_height, target_width, _ = tf.unstack(bbox_size)
         x = tf.slice(x, [offset_height, offset_width, 0], [target_height, target_width, 3])

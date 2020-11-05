@@ -55,16 +55,15 @@ def stack0(x, filters, blocks, stride1=2, name=None):
 def block0_1(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None):
     preact = BatchNormalization(name=name+'_pre_norm')(x)
     preact = Activation('relu', name=name+'_pre_acti')(preact)
-
     if conv_shortcut is True:
         shortcut = Conv2D(filters, 1, strides=stride, 
-                          kernel_regularizer=l2(1e-4), name=name+'_0_conv')(x)
+                          kernel_regularizer=l2(1e-4), name=name+'_0_conv')(preact)
         shortcut = BatchNormalization(name=name+'_0_norm')(shortcut)
     else:
-        shortcut = x
+        shortcut = preact
 
     x = Conv2D(filters, kernel_size, strides=stride, padding='same', 
-               kernel_regularizer=l2(1e-4), name=name+'_1_conv')(x)
+               kernel_regularizer=l2(1e-4), name=name+'_1_conv')(preact)
     x = BatchNormalization(name=name+'_1_norm')(x)
     x = Activation('relu', name=name+'_1_acti')(x)
     
@@ -95,12 +94,12 @@ def ResNet(
     x = ZeroPadding2D(padding=((1, 1), (1, 1)), name='conv1_pad')(x)
     x = Conv2D(64, 3, strides=1, use_bias=use_bias, 
                kernel_regularizer=l2(1e-4), name='conv1_conv')(x)
-    if preact is False:
+    if not preact:
         x = BatchNormalization(name='conv1_norm')(x)
         x = Activation('relu', name='conv1_acti')(x)
 
     x = stack_fn(x)
-    if preact is True:
+    if preact:
         x = BatchNormalization(name='post_norm')(x)
         x = Activation('relu', name='post_acti')(x)
 
