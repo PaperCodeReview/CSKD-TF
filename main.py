@@ -45,7 +45,11 @@ def main():
     ##########################
     # Strategy
     ##########################
-    strategy = tf.distribute.experimental.CentralStorageStrategy()
+    if len(args.gpus.split(',')) > 1:
+        strategy = tf.distribute.experimental.CentralStorageStrategy()
+    else:
+        strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+    
     num_workers = strategy.num_replicas_in_sync
     assert args.batch_size % num_workers == 0
 
