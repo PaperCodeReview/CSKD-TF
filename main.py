@@ -45,7 +45,11 @@ def main():
     ##########################
     # Strategy
     ##########################
-    strategy = tf.distribute.experimental.CentralStorageStrategy()
+    if len(args.gpus.split(',')) > 1:
+        strategy = tf.distribute.experimental.CentralStorageStrategy()
+    else:
+        strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+        
     num_workers = strategy.num_replicas_in_sync
     assert args.batch_size % num_workers == 0
 
@@ -87,8 +91,8 @@ def main():
             metrics=[
                 tf.keras.metrics.TopKCategoricalAccuracy(k=1, name='acc1'),
                 tf.keras.metrics.TopKCategoricalAccuracy(k=5, name='acc5')],
-            xe_loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE, name='xe_loss'),
-            cls_loss=tf.keras.losses.KLDivergence(reduction=tf.keras.losses.Reduction.NONE, name='cls_loss'),
+            xe_loss=tf.keras.losses.categorical_crossentropy,
+            cls_loss=tf.keras.losses.KLD,
             cls_lambda=args.loss_weight,
             temperature=args.temperature,
             run_eagerly=True)

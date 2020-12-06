@@ -99,7 +99,7 @@ class CSKD(tf.keras.Model):
         img, label = data
         with tf.GradientTape() as tape:
             xe_logits = self.model(img, training=True)
-            xe_loss = self.xe_loss(label, xe_logits)
+            xe_loss = self.xe_loss(label, xe_logits, from_logits=True)
             xe_loss = tf.reduce_sum(xe_loss) / self.batch_size
         
         trainable_vars = self.model.trainable_variables
@@ -112,24 +112,21 @@ class CSKD(tf.keras.Model):
         return results
 
     def train_cskd(self, data):
-        imgs, labels = data
-        img1, img2 = tf.split(imgs, num_or_size_splits=2, axis=1)
-        img1, img2 = tf.squeeze(img1), tf.squeeze(img2)
-        label1, label2 = tf.split(labels, num_or_size_splits=2, axis=1)
-        label1, label2 = tf.squeeze(label1), tf.squeeze(label2)
-
+        img1, label1, img2, label2 = data
         cls_logits = self.model(img2, training=False)
         with tf.GradientTape() as tape:
             xe_logits = self.model(img1, training=True)
-            xe_loss = self.xe_loss(label1, xe_logits)
+            xe_loss = self.xe_loss(label1, xe_logits, from_logits=True)
             xe_loss = tf.reduce_sum(xe_loss) / self.batch_size
 
+            # TF : loss = y_true * log(y_true / y_pred)
+            # torch : loss = y * (log(y) - x)
             cls_loss = self.cls_loss(
                 tf.nn.softmax(tf.stop_gradient(cls_logits) / self.temperature),
                 tf.nn.softmax(xe_logits / self.temperature))
-            cls_loss = tf.reduce_sum(cls_loss) / self.batch_size
+            cls_loss = tf.reduce_sum(cls_loss) * (self.temperature**2) / self.batch_size
 
-            loss = xe_loss + self.cls_lambda * (self.temperature**2) * cls_loss
+            loss = xe_loss + self.cls_lambda * cls_loss
 
         trainable_vars = self.model.trainable_variables
         grads = tape.gradient(loss, trainable_vars)
@@ -149,7 +146,7 @@ class CSKD(tf.keras.Model):
     def test_step(self, data):
         img, label = data
         xe_logits = self.model(img, training=False)
-        xe_loss = self.xe_loss(label, xe_logits)
+        xe_loss = self.xe_loss(label, xe_logits, from_logits=True)
         xe_loss = tf.reduce_sum(xe_loss) / self.batch_size
 
         self.compiled_metrics.update_state(label, xe_logits)

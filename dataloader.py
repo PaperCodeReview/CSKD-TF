@@ -53,8 +53,7 @@ class DataLoader:
         elif self.dataset.startswith('cifar'):
             if self.mode == 'train':
                 img = self.augment._pad(img, [[4, 4], [4, 4], [0, 0]])
-                img = self.augment._crop(img, (40, 40, 3))
-                img = self.augment._resize(img, 32)
+                img = self.augment._cifar_crop(img)
                 img = self.augment._random_hflip(img)
 
         else:
@@ -110,16 +109,16 @@ class DataLoader:
                 if self.shuffle:
                     indices = np.random.permutation(len(self.datalist))
                 for idx in indices:
-                    img, label = _imgload(imglist[idx]), labellist[idx]
-                    idx_cls = np.random.choice(np.where(labellist == label)[0])
+                    img1, label1 = _imgload(imglist[idx]), labellist[idx]
+                    idx_cls = np.random.choice(np.where(labellist == label1)[0])
                     img2, label2 = _imgload(imglist[idx_cls]), labellist[idx_cls]
-                    assert label == label2, 'label and label2 must be equal!'
-                    yield (img, label, img.shape, img2, label2, img2.shape)
+                    assert label1 == label2, 'label and label2 must be equal!'
+                    yield (img1, label1, img1.shape, img2, label2, img2.shape)
 
-        def _preprocess_image(img, label, shape, img2, label2, shape2):
-            img, label = self.augmentation(img, label, shape)
+        def _preprocess_image(img1, label1, shape1, img2, label2, shape2):
+            img1, label1 = self.augmentation(img1, label1, shape1)
             img2, label2 = self.augmentation(img2, label2, shape2)
-            return (tf.stack((img, img2), axis=0), tf.stack((label, label2), axis=0))
+            return (img1, label1, img2, label2)
 
         dataset = tf.data.Dataset.from_generator(
             _loader,
@@ -158,6 +157,12 @@ class Augment:
 
     def _pad(self, x, paddings):
         return tf.pad(x, paddings)
+
+    def _cifar_crop(self, x):
+        offset_height = tf.random.uniform(shape=[], minval=0, maxval=9, dtype=tf.int32)
+        offset_width = tf.random.uniform(shape=[], minval=0, maxval=9, dtype=tf.int32)
+        x = tf.slice(x, [offset_height, offset_width, 0], [32, 32, 3])
+        return x
         
     def _crop(self, x, shape, coord=[[[0., 0., 1., 1.]]]):
         bbox_begin, bbox_size, _ = tf.image.sample_distorted_bounding_box(
@@ -165,7 +170,7 @@ class Augment:
             bounding_boxes=coord,
             aspect_ratio_range=(3/4, 4/3),
             area_range=(.08, 1.),
-            max_attempts=100,
+            max_attempts=10,
             use_image_if_no_bounding_boxes=True)
         
         offset_height, offset_width, _ = tf.unstack(bbox_begin)
