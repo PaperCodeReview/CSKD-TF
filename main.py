@@ -121,7 +121,7 @@ def main():
     ##########################
     # Train
     ##########################
-    callbacks = create_callbacks(args)
+    callbacks, initial_epoch = create_callbacks(args, logger, initial_epoch)
 
     model.fit(
         train_generator,

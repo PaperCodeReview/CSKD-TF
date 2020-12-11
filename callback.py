@@ -10,21 +10,31 @@ from tensorflow.keras.callbacks import LearningRateScheduler
 from common import create_stamp
 
 
-def create_callbacks(args):
-    if args.snapshot is None:
+def create_callbacks(args, logger, initial_epoch):
+    if not args.resume:
         if args.checkpoint or args.history or args.tensorboard:
-            # To avoid duplicate stamp
-            flag = True
-            while flag:
-                try:
-                    os.makedirs(f'{args.result_path}/{args.dataset}/{args.stamp}')
-                    flag = False
-                except:
+            if os.path.isdir(f'{args.result_path}/{args.dataset}/{args.stamp}'):
+                flag = input(f'{args.dataset}/{args.stamp} is already saved. '
+                              'Do you want new stamp? (y/n)')
+                if flag == 'y':
                     args.stamp = create_stamp()
+                    initial_epoch = 0
+                    logger.info(f'New stamp {args.stamp} will be created.')
+                elif flag == 'n':
+                    return -1, initial_epoch
+                else:
+                    return -2, initial_epoch
+
+            os.makedirs(f'{args.result_path}/{args.dataset}/{args.stamp}')
             yaml.dump(
                 vars(args), 
                 open(f'{args.result_path}/{args.dataset}/{args.stamp}/model_desc.yml', 'w'), 
                 default_flow_style=False)
+        else:
+            logger.info(f'{args.stamp} is not created due to '
+                        f'checkpoint : {args.checkpoint} '
+                        f'history : {args.history} '
+                        f'tensorboard : {args.tensorboard} ')
 
     callbacks = []
     if args.checkpoint:

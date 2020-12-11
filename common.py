@@ -38,6 +38,7 @@ def get_arguments():
     parser.add_argument('--src_path',       type=str,       default='.')
     parser.add_argument('--data_path',      type=str,       default=None)
     parser.add_argument('--result_path',    type=str,       default='./result')
+    parser.add_argument("--resume",         action='store_true')
     parser.add_argument('--snapshot',       type=str,       default=None)
     parser.add_argument('--seed',           type=int,       default=42)
     parser.add_argument("--gpus",           type=str,       default='-1')
