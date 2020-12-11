@@ -9,8 +9,7 @@ from common import search_same
 from common import create_stamp
 from dataloader import set_dataset
 from dataloader import DataLoader
-from models.backbone import set_model
-from models.backbone import CSKD
+from models import set_model
 from callback import create_callbacks
 
 import tensorflow as tf
@@ -78,12 +77,11 @@ def main():
     # Model
     ##########################
     with strategy.scope():
-        backbone = set_model(args.backbone, args.dataset, args.classes)
+        model = set_model(args.backbone, args.dataset, args.classes)
         if args.snapshot:
-            backbone.load_weights(args.snapshot)
+            model.load_weights(args.snapshot)
             logger.info(f"Load weights at {args.snapshot}")
 
-        model = CSKD(backbone)
         model.compile(
             loss=args.loss,
             batch_size=args.batch_size,

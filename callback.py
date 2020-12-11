@@ -10,12 +10,6 @@ from tensorflow.keras.callbacks import LearningRateScheduler
 from common import create_stamp
 
 
-class CustomModelCheckpoint(ModelCheckpoint):
-    def on_train_begin(self, logs=None):
-        super(CustomModelCheckpoint, self).set_model(self.model.layers[0])
-        super(CustomModelCheckpoint, self).on_train_begin(logs)
-
-
 def create_callbacks(args):
     if args.snapshot is None:
         if args.checkpoint or args.history or args.tensorboard:
@@ -35,7 +29,7 @@ def create_callbacks(args):
     callbacks = []
     if args.checkpoint:
         os.makedirs(f'{args.result_path}/{args.dataset}/{args.stamp}/checkpoint', exist_ok=True)
-        callbacks.append(CustomModelCheckpoint(
+        callbacks.append(ModelCheckpoint(
             filepath=os.path.join(
                 f'{args.result_path}/{args.dataset}/{args.stamp}/checkpoint',
                 '{epoch:04d}_{val_loss:.4f}_{val_acc1:.4f}_{val_acc5:.4f}.h5'),

@@ -14,13 +14,9 @@ from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import DepthwiseConv2D
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras.models import Model
 
+from models.cskd import CSKD
 
-# def regularizer(flag, decay=1e-4):
-#     if flag:
-#         return l2(decay)
-#     return None
 
 def block0(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None):
     if conv_shortcut is True:
@@ -105,7 +101,7 @@ def ResNet(
 
     x = GlobalAveragePooling2D(name='avg_pool')(x)
     x = Dense(classes, name='main_output')(x)
-    model = Model(img_input, x, name=backbone)
+    model = CSKD(img_input, x, name=backbone)
     return model
 
 

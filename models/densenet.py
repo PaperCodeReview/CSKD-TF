@@ -7,8 +7,9 @@ from tensorflow.keras.layers import Concatenate
 from tensorflow.keras.layers import AveragePooling2D
 from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import Dense
-from tensorflow.keras.models import Model
 from tensorflow.keras.regularizers import l2
+
+from models.cskd import CSKD
 
 
 def conv_block(x, growth_rate):
@@ -63,7 +64,7 @@ def CIFAR_DenseNet(
 
     logits = Dense(classes, use_bias=True)(x)
 
-    model = Model(img_input, logits)
+    model = CSKD(img_input, logits)
     return model
 
 
