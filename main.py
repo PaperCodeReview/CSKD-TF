@@ -122,6 +122,11 @@ def main():
     # Train
     ##########################
     callbacks, initial_epoch = create_callbacks(args, logger, initial_epoch)
+    if callbacks == -1:
+        logger.info('Check your model.')
+        return
+    elif callbacks == -2:
+        return
 
     model.fit(
         train_generator,

@@ -14,8 +14,8 @@ def create_callbacks(args, logger, initial_epoch):
     if not args.resume:
         if args.checkpoint or args.history or args.tensorboard:
             if os.path.isdir(f'{args.result_path}/{args.dataset}/{args.stamp}'):
-                flag = input(f'{args.dataset}/{args.stamp} is already saved. '
-                              'Do you want new stamp? (y/n)')
+                flag = input(f'\n{args.dataset}/{args.stamp} is already saved. '
+                              'Do you want new stamp? (y/n) ')
                 if flag == 'y':
                     args.stamp = create_stamp()
                     initial_epoch = 0
@@ -23,6 +23,7 @@ def create_callbacks(args, logger, initial_epoch):
                 elif flag == 'n':
                     return -1, initial_epoch
                 else:
+                    logger.info(f'You must select \'y\' or \'n\'.')
                     return -2, initial_epoch
 
             os.makedirs(f'{args.result_path}/{args.dataset}/{args.stamp}')
@@ -76,4 +77,4 @@ def create_callbacks(args, logger, initial_epoch):
             schedule=scheduler,
             verbose=1))
 
-    return callbacks
+    return callbacks, initial_epoch

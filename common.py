@@ -113,15 +113,27 @@ def search_same(args):
             continue
         
         flag = True
+        save_flag = False
         for k, v in vars(args).items():
             if k in search_ignore:
                 continue
+
+            if k == 'resume' and k not in desc:
+                desc[k] = False
+                save_flag = True
                 
             if v != desc[k]:
                 # if stamp == '201104_Wed_08_53_35':
                 print(stamp, k, desc[k], v)
                 flag = False
                 break
+
+        if save_flag:
+            yaml.dump(
+                desc, 
+                open(f'{args.result_path}/{args.dataset}/{stamp}/model_desc.yml', 'w'), 
+                default_flow_style=False)
+            save_flag = False
         
         if flag:
             args.stamp = stamp
