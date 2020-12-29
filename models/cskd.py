@@ -52,9 +52,9 @@ class CSKD(tf.keras.Model):
             cls_loss = self.cls_loss(
                 tf.nn.softmax(tf.stop_gradient(cls_logits) / self.temperature),
                 tf.nn.softmax(xe_logits / self.temperature))
-            cls_loss = tf.reduce_sum(cls_loss) * (self.temperature**2) / self.batch_size
+            cls_loss = tf.reduce_sum(cls_loss) / self.batch_size
 
-            loss = xe_loss + self.cls_lambda * cls_loss
+            loss = xe_loss + self.cls_lambda * (self.temperature**2) * cls_loss
 
         trainable_vars = self.trainable_variables
         grads = tape.gradient(loss, trainable_vars)

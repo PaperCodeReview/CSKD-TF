@@ -1,6 +1,8 @@
 import tensorflow as tf
 from .resnet import ResNet18
 from .resnet import PreAct_ResNet18
+from .resnet import ResNet50
+from .resnet import ResNet101
 from .densenet import CIFAR_DenseNet121
 
 
@@ -22,13 +24,13 @@ def set_model(
         if name == 'resnet18':
             backbone = PreAct_ResNet18(
                 backbone=name,
-                dataset=dataset,
                 input_shape=(32, 32, 3),
                 classes=classes)
         elif name == 'densenetbc':
-            backbone = CIFAR_DenseNet121(
-                input_shape=(32, 32, 3),
-                classes=classes)
+            raise NotImplementedError('densenetbc is not implemented yet.')
+            # backbone = CIFAR_DenseNet121(
+            #     input_shape=(32, 32, 3),
+            #     classes=classes)
         else:
             raise ValueError('the models of cs-kd for cifar100 or tinyimagenet '
                              'were only resnet18 and densenet-bc.')
@@ -36,15 +38,13 @@ def set_model(
     elif dataset in ['imagenet']:
         # resnet-50, resnet-101, resnext-101-32x4d
         if name == 'resnet50':
-            backbone = tf.keras.applications.ResNet50(
-                include_top=True,
-                weights=None,
+            backbone = ResNet50(
+                backbone=name,
                 input_shape=(224, 224, 3),
                 classes=classes)
         elif name == 'resnet101':
-            backbone = tf.keras.applications.ResNet101(
-                include_top=True,
-                weights=None,
+            backbone = ResNet101(
+                backbone=name,
                 input_shape=(224, 224, 3),
                 classes=classes)
         elif name == 'resnext101':
@@ -55,15 +55,15 @@ def set_model(
         if 'resnet' in name:
             backbone = ResNet18(
                 backbone=name,
-                dataset=dataset,
                 input_shape=(224, 224, 3),
                 classes=classes)
         elif 'densenet' in name:
-            backbone = tf.keras.applications.DenseNet121(
-                include_top=True,
-                weights=None,
-                input_shape=(224, 224, 3),
-                classes=classes)
+            raise NotImplementedError('densenet is not implemented yet.')
+            # backbone = tf.keras.applications.DenseNet121(
+            #     include_top=True,
+            #     weights=None,
+            #     input_shape=(224, 224, 3),
+            #     classes=classes)
         else:
             raise ValueError()
 
