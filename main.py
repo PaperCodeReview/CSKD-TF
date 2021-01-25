@@ -15,17 +15,16 @@ from callback import create_callbacks
 import tensorflow as tf
 
 
-class_dict = {
+CLASS_DICT = {
     'imagenet': 1000,
     'cifar100': 100,
     'tinyimagenet': 200,
-    'cub': 200,
-}
+    'cub': 200,}
 
 def main():
     args = get_arguments()
     set_seed(args.seed)
-    args.classes = class_dict[args.dataset]
+    args.classes = CLASS_DICT[args.dataset]
     args, initial_epoch = search_same(args)
     if initial_epoch == -1:
         # training was already finished!
@@ -84,7 +83,6 @@ def main():
 
         model.compile(
             loss=args.loss,
-            batch_size=args.batch_size,
             optimizer=tf.keras.optimizers.SGD(args.lr, momentum=.9),
             metrics=[
                 tf.keras.metrics.TopKCategoricalAccuracy(k=1, name='acc1'),
@@ -93,6 +91,7 @@ def main():
             cls_loss=tf.keras.losses.KLD,
             cls_lambda=args.loss_weight,
             temperature=args.temperature,
+            num_workers=num_workers,
             run_eagerly=True)
 
 

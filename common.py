@@ -7,6 +7,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from datetime import datetime
+
 import tensorflow as tf
 
 
@@ -86,14 +87,13 @@ def create_stamp():
     weekday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     temp = datetime.now()
     return "{:02d}{:02d}{:02d}_{}_{:02d}_{:02d}_{:02d}".format(
-        temp.year // 100,
+        temp.year % 100,
         temp.month,
         temp.day,
         weekday[temp.weekday()],
         temp.hour,
         temp.minute,
-        temp.second,
-    )
+        temp.second,)
 
 
 def search_same(args):
@@ -117,10 +117,6 @@ def search_same(args):
         for k, v in vars(args).items():
             if k in search_ignore:
                 continue
-
-            if k == 'resume' and k not in desc:
-                desc[k] = False
-                save_flag = True
                 
             if v != desc[k]:
                 # if stamp == '201104_Wed_08_53_35':
@@ -154,9 +150,8 @@ def search_same(args):
 
                 else:
                     ckpt_list = sorted(
-                        [d for d in os.listdir(
-                            f'{args.result_path}/{args.dataset}/{args.stamp}/checkpoint') if 'h5' in d],
-                        key=lambda x: int(x.split('_')[0]))
+                        [d.split('.index')[0] for d in os.listdir(
+                            f'{args.result_path}/{args.dataset}/{args.stamp}/checkpoint') if 'index' in d])
                     
                     if len(ckpt_list) > 0:
                         args.snapshot = f'{args.result_path}/{args.dataset}/{args.stamp}/checkpoint/{ckpt_list[-1]}'
