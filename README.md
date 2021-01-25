@@ -32,7 +32,7 @@ Our model achieves the following performance on :
 |    Dataset    | Top-1 error rates (paper, Cross-entropy) | Top-1 error rates (paper, CSKD) | Top-1 error rates (ours, Cross-entropy) | Top-1 error rates (ours, CSKD) |
 | ------------- | ---------------------------------------- | ------------------------------- | --------------------------------------- | ------------------------------ |
 |   CIFAR-100   |              24.71 (± 0.24)              |          21.99 (± 0.13)         |                   27.73                 |              29.76             |
-| TinyImageNet  |              43.53 (± 0.19)              |          41.62 (± 0.38)         |                   48.62                 |              49.35             |
+| TinyImageNet  |              43.53 (± 0.19)              |          41.62 (± 0.38)         |                   44.18                 |              43.34             |
 | CUB-200-2011  |              46.00 (± 1.43)              |          33.28 (± 0.99)         |                     -                   |                -               |
 | Stanford Dogs |              36.29 (± 0.32)              |          30.85 (± 0.28)         |                     -                   |                -               |
 |     MIT67     |              44.75 (± 0.80)              |          40.45 (± 0.45)         |                     -                   |                -               |
